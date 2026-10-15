@@ -1,0 +1,6 @@
+import System;
+
+public int Main(string[] args) {
+    Console.WriteLine("Hello world!");
+    return 0;
+}

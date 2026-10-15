@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#111827" />
+  <circle cx="1000" cy="100" r="340" fill="#0f766e" opacity=".24" />
+  <circle cx="1100" cy="580" r="260" fill="#0284c7" opacity=".16" />
+  <text x="110" y="250" fill="#5eead4" font-family="system-ui,sans-serif" font-size="112" font-weight="750">CX</text>
+  <text x="110" y="345" fill="#f9fafb" font-family="system-ui,sans-serif" font-size="47" font-weight="600">A programming language for native software</text>
+  <text x="110" y="415" fill="#9ca3af" font-family="system-ui,sans-serif" font-size="30">Learn the language. Explore the compiler. Build with CX.</text>
+</svg>

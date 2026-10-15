@@ -1,0 +1,30 @@
+{
+  "repositories": {
+    "cxc": {
+      "url": "https://github.com/cx-pl/cxc",
+      "revision": "f24e1cb637b5952178d0b89f39613512a2f4b417",
+      "files": ["docs/language-reference.md", "README.md", "LICENSE"]
+    },
+    "cxcore": {
+      "url": "https://github.com/cx-pl/cxcore",
+      "revision": "26b4868617f19db79686292d1b85315b20f8e160",
+      "files": ["docs/standard-library-contracts.md", "docs/runtime-abi.md", "LICENSE"]
+    },
+    "examples": {
+      "url": "https://github.com/cx-pl/examples",
+      "revision": "885d33246864e32c7de53b20401d43fddeb9f5e0",
+      "files": ["0. Hello World/HelloWorld.cx", "1. Classes/Classes.cx", "3. Arrays and Loops/ArraysAndLoops.cx", "LICENSE"]
+    },
+    "cxpm": {
+      "url": "https://github.com/cx-pl/cxpm",
+      "revision": "c47d720a30fb9a499509bbd439f4989a2f0e90ed",
+      "files": ["README.md", "LICENSE"]
+    },
+    "vscode-extension": {
+      "url": "https://github.com/cx-pl/vscode-extension",
+      "revision": "7b2eb4ac41fec5bdf34a0aeb3f6779940180b4d1",
+      "files": ["README.md", "syntaxes/cx.tmLanguage.json", "LICENSE"]
+    }
+  },
+  "note": "These are the checked-in revisions at site creation. The corresponding workspaces had uncommitted changes; generated documentation deliberately uses committed files only. Review and advance these pins before treating the content as current."
+}

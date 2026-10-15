@@ -1,0 +1,51 @@
+import System;
+
+public abstract class AbstractPrinter {
+    public constructor() {}
+
+    public abstract void Print(int x) const;
+}
+
+public class ConsolePrinter : AbstractPrinter {
+    public constructor() {}
+
+    public void Print(int x) const {}
+}
+
+public struct Pos2d {
+    int X, Y;
+
+    constructor(int x, int y) {
+        X = x;
+        Y = y;
+    }
+
+    public override const string ToString() const {
+        return "position";
+    }
+}
+
+public interface ICalc {
+    int Sum(int a, int b) const;
+}
+
+public interface IFoo {}
+
+public final class FooCalc : ICalc, IFoo {
+    public constructor() {}
+
+    public int Sum(int a, int b) const {
+        return a + b;
+    }
+}
+
+public int Main() {
+    ConsolePrinter printer = new ConsolePrinter();
+    printer.Print(42);
+
+    Pos2d position = new Pos2d(3, 4);
+    if (position.ToString() != "position") return 1;
+    FooCalc calculator = new FooCalc();
+    if (calculator.Sum(2, 3) != 5) return 1;
+    return 0;
+}

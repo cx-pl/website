@@ -1,0 +1,133 @@
+> Imported from [cxcore](https://github.com/cx-pl/cxcore/blob/26b4868617f19db79686292d1b85315b20f8e160/docs/standard-library-contracts.md) at revision `26b4868617f19db79686292d1b85315b20f8e160`. This snapshot is updated deliberately; it does not track repository changes automatically.
+
+# Standard-library runtime contracts
+
+These contracts describe the current C runtime. CX allocations are managed by a
+non-moving conservative collector with explicit native worker registration and
+cooperative stop-the-world coordination and public `System.Threading` workers,
+mutexes, and atomic integer cells. The collector design and limits are documented in
+[`managed-memory-design.md`](https://github.com/cx-pl/cxcore/blob/26b4868617f19db79686292d1b85315b20f8e160/docs/managed-memory-design.md). The ABI and ownership
+rules remain experimental.
+
+## Allocation and ownership
+
+- `Memory.Alloc` returns zero-initialized, collector-tracked storage. A zero-byte request returns a
+  non-null allocation that can be passed to `Memory.Free`.
+- `Memory.Realloc(block, 0)` frees `block` and returns null. For a nonzero size, a
+  failed reallocation terminates the process; it never returns a lost old pointer.
+- `Memory.Copy` is a no-op for size zero. Nonzero copies require valid, non-overlapping
+  ranges, as with C `memcpy`.
+- Built-in `T[]` storage and the public `System.Collections.Array&lt;T&gt;` API use
+  the same `System.Collections.Array` runtime structure and own a
+  zero-initialized element buffer allocated by `cx_array_new`. The public type
+  is declared in `src/System/Collections/Array.cx` and exposes `Length`, `Get`,
+  and `Set`. The current explicit cleanup
+  is `Memory.Free(array-&gt;_data)` followed by `Memory.Free(array)`.
+  `cx_array_at` returns null for a null array, an out-of-range index, invalid
+  zero-sized elements, or missing backing storage.
+- Runtime-owned allocations go through `Memory.Alloc` and are eligible for collection
+  when unreachable. `Memory.Free` immediately unregisters and releases a block; freeing
+  a block while a live reference may be used is invalid. `Memory.Realloc` tracks the
+  resized block, but references invalidated by a move must not be used.
+- `Nullable` is a one-pointer value. Its constructor and `Value` setter store a
+  non-owning pointer; compiler-generated lifts call `Nullable&lt;T&gt;.CreateValueStorage`,
+  which allocates a copy of the supplied bytes through `Memory.Alloc`; the payload is
+  traced conservatively with the rest of the managed heap.
+- `Object` initializes its runtime vtable. Ordinary objects leave `_box` null;
+  boxed value objects use it to retain their managed box header and payload.
+  No finalizers run. The non-moving collector may retain unreachable blocks when stale
+  pointer-shaped values remain on a scanned stack or in a registered root.
+- `DateTime` component construction validates the Gregorian date and time fields. `AddMonths`
+  uses calendar months, clamps the day to the last day of the destination month, and keeps
+  the time-of-day and offset. Invalid components and results outside the stored millisecond
+  range write a diagnostic and exit with failure.
+
+## Strings, characters, and console
+
+- String data is UTF-8 and `_length` is a byte count. `String.Length` counts Unicode
+  scalar values, and `String.Item` indexes those scalar values. The item getter returns
+  `-1` for an invalid index or malformed UTF-8 sequence. `Length` counts each malformed
+  byte as one replacement position so it stays bounded by the stored byte length.
+- `String ==`, `String !=`, `Equals`, and `GetHashCode` use the stored UTF-8 bytes;
+  equal byte sequences compare equal and produce the same hash. `ToString()` returns
+  the same string instance. String constructors initialize the `String` vtable after
+  the base `Object` constructor initializes the base object state.
+- `String &lt;`, `&lt;=`, `&gt;`, and `&gt;=` compare UTF-8 byte sequences lexicographically.
+  For valid UTF-8, this gives Unicode scalar value ordering. A null string sorts
+  before a non-null string when the comparison is made through typed string values.
+- `String + String` copies both UTF-8 byte sequences into a new managed string.
+  A null operand contributes no bytes. Length overflow and allocation failure
+  terminate according to the runtime allocation contract.
+- `String.__constructor(length, data)` borrows an immutable byte buffer. The buffer
+  must remain alive and unchanged while the string uses it. String literals borrow
+  static storage. The character-fill constructor allocates its encoded UTF-8 buffer;
+  callers may release it with `Memory.Free` only when no live reference can use it.
+- `Char` is a Unicode scalar value in a 32-bit integer. `Char.NumBytes` returns its
+  UTF-8 encoded width, or `-1` for a surrogate or value above U+10FFFF. Current
+  `IsDigit`, `IsLetter`, case conversion, and whitespace helpers are ASCII-only.
+- `Console.Read(length)` reads at most `length` bytes. `ReadLine()` reads through a
+  newline or EOF and grows its buffer as needed. Both return a heap-allocated String
+  object with heap-allocated contents; those allocations are traced. Callers may
+  release them with `Memory.Free` when no live reference can use them. `Console.Write`
+  writes the stored UTF-8 bytes
+  unchanged and returns the number of bytes written.
+
+Allocation failures in `Memory.Alloc` and nonzero `Memory.Realloc` write `Out of memory`
+to standard error and exit with failure. The old allocation remains untouched when
+reallocation fails before process termination. Bounds,
+ownership, and UTF-8 errors do not currently raise typed CX exceptions.
+
+## Shared-library declarations
+
+`CX_API` marks runtime functions as exports while building `cxcore`, imports for dynamic
+consumers, and undecorated declarations for static consumers. Public runtime data uses
+`CX_CXCORE_DATA_API` with the same producer/consumer/static behavior. CMake propagates
+`CX_STATIC_LINK` from static `cxcore` targets to their consumers.
+
+## Managed-memory limits
+
+The collector scans registered thread stacks, saved registers, managed blocks, and
+registered static-field regions. Generated modules register their static fields;
+native C code must register static storage that retains managed pointers. Heap
+operations from an unregistered OS thread fail. Native workers must attach,
+poll safepoints, park during native-only blocking calls, and detach before exit;
+see [threading-gc-design.md](https://github.com/cx-pl/cxcore/blob/26b4868617f19db79686292d1b85315b20f8e160/docs/threading-gc-design.md). Application fields require
+their own synchronization. Synchronous native calls on a running attached thread
+retain their stack roots; references retained beyond the call must be kept in a
+registered root or another managed block. Foreign callbacks use owned attachment
+scopes and removable root handles; reentry from a parked native-only blocking
+callback still requires a future explicit adapter.
+
+## Platform support
+
+The runtime supports Windows through MSVC and x64 Linux through GCC. Linux
+selects native environment and system-clock providers and the platform-specific
+managed-memory helpers. Static and shared Linux targets build and pass the native
+runtime test suite in the repository's Docker development container. macOS
+remains unsupported.
+
+## Native interop and text
+
+wchar is a 16-bit UTF-16 code unit on every target. System.WideString owns immutable
+copied storage; Length/Item count units and ScalarCount/ScalarAt validate scalars.
+Equality, hashing and ordinal comparison use units. Empty values and embedded zeros
+are preserved. String.ToWideString and the Object.ToString override on WideString
+transcode explicitly, without normalization or implicit conversion. Malformed UTF-8
+or unpaired UTF-16 throws EncodingException with a byte/unit Position.
+
+System.Interop.NativeBuffer owns malloc storage. AllocateAligned takes a power-of-two
+alignment for stronger SDK layouts. FromUtf8/FromUtf16 copy input with optional
+termination; ByteLength includes that terminator. ToUtf8String/ToWideString copy
+explicit output lengths without scanning for zero. Dispose is explicit/idempotent;
+never dispose while native code retains Data. SDK objects and buffers require their
+own allocator/destructor, not Memory.Alloc or NativeBuffer.Dispose.
+
+NativeLibrary keeps loaded handles until process exit; Resolve&lt;T&gt; returns typed
+native functions or throws a load/symbol error. NativeError holds immediate TLS
+errno/last-error snapshots. NativeCallback.Register&lt;T&gt; roots a closure and optional
+owner until successful SDK unregistration and completion of in-flight callbacks.
+Unregister failure permits retry; self-unregistration is rejected. LastException
+survives close, and late callbacks receive their configured failure result. Small
+context tombstones stay until process exit; managed payloads are freed on close.
+Callbacks catch CX exceptions before foreign frames and restore native TLS state.
+See [native-interop-design.md](https://github.com/cx-pl/cxcore/blob/26b4868617f19db79686292d1b85315b20f8e160/docs/native-interop-design.md) for ABI and lifetime rules.

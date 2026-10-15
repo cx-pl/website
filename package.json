@@ -1,0 +1,23 @@
+{
+  "name": "cx-language-website",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Official documentation website for the experimental CX programming language",
+  "type": "module",
+  "packageManager": "pnpm@11.28.5",
+  "engines": {
+    "node": ">=24.12.0"
+  },
+  "scripts": {
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "node scripts/prepare-samples.mjs && vitepress build docs",
+    "docs:preview": "vitepress preview docs",
+    "content:sync": "node scripts/sync-content.mjs",
+    "content:check": "node scripts/check-content.mjs",
+    "check": "pnpm content:check && pnpm docs:build"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "vitepress": "1.6.4"
+  }
+}

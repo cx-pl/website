@@ -1,0 +1,21 @@
+import System;
+
+public class Counter {
+    private int value;
+
+    public void Increment() {
+        value = value + 1;
+    }
+
+    public int GetValue() {
+        return value;
+    }
+}
+
+public int Main() {
+    Counter counter = new Counter();
+    counter.Increment();
+    if (counter.GetValue() != 1) return 1;
+    Console.WriteLine("objects pass");
+    return 0;
+}
